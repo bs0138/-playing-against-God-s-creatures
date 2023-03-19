@@ -16,7 +16,6 @@ d <- 1/u
 pu <- (exp(r*dt)-d)/(u-d)
 pd <- 1-pu
 
-# 計算股票價格的三叉樹
 S <- matrix(0, N+1, N+1)
 for (i in 1:(N+1)) {
   for (j in 1:i) {
@@ -38,7 +37,7 @@ for (i in N:1) {
   }
 }
 
-# 定義計算隱含波動率的函數
+
 bs_call <- function(S0, K, r, sigma, T) {
   d1 <- (log(S0/K)+(r+sigma^2/2)*T) / (sigma*sqrt(T))
   d2 <- d1 - sigma*sqrt(T)

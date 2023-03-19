@@ -1,0 +1,62 @@
+
+
+```r
+# Define the input parameters
+strike_price <- 100
+current_price <- 120
+expiration_date <- as.Date("2023-06-30")
+interest_rate <- 0.05
+implied_volatility <- 0.2
+
+# Define the Pareto distribution with ALPHA and X MIN
+alpha <- 1.2
+x_min <- 0.1
+pareto_dist <- function(n) {
+  u <- runif(n)
+  return(x_min/((1-u)^(1/alpha)))
+}
+
+# Define the Monte Carlo simulation function
+monte_carlo <- function(n_sims, n_steps) {
+  dt <- 1/365
+  stock_prices <- matrix(current_price, n_sims, n_steps + 1)
+  for (i in 2:(n_steps + 1)) {
+    stock_prices[, i] <- stock_prices[, i - 1] * exp((interest_rate - 0.5 * implied_volatility^2) * dt +
+                                                      implied_volatility * sqrt(dt) * pareto_dist(n_sims))
+  }
+  return(stock_prices)
+}
+
+# Define the early exercise function
+early_exercise <- function(stock_prices, strike_price, expiration_date) {
+  n_sims <- nrow(stock_prices)
+  n_steps <- ncol(stock_prices) - 1
+  option_values <- matrix(0, n_sims, n_steps + 1)
+  option_values[, n_steps + 1] <- ifelse(stock_prices[, n_steps + 1] <= strike_price, strike_price - stock_prices[, n_steps + 1], 0)
+  for (i in n_steps:1) {
+    call_payoff <- ifelse(stock_prices[, i] <= strike_price, strike_price - stock_prices[, i], 0)
+    time_to_expiration <- as.numeric(difftime(expiration_date, as.Date("1970-01-01"), units = "days"))/365 - (i - 1)/365
+    continuation_value <- option_values[, i + 1] * exp(-interest_rate * time_to_expiration)
+    early_exercise <- call_payoff > continuation_value
+    option_values[early_exercise, i] <- call_payoff[early_exercise]
+    option_values[!early_exercise, i] <- option_values[!early_exercise, i + 1] * exp(-interest_rate * time_to_expiration)
+  }
+  return(option_values[, 1])
+}
+
+# Run the Monte Carlo simulation and early exercise functions
+n_sims <- 10000
+n_steps <- 90
+set.seed(123)
+stock_prices <- monte_carlo(n_sims, n_steps)
+call_prices <- early_exercise(stock_prices, strike_price, expiration_date)
+put_prices <- early_exercise(stock_prices, strike_price, expiration_date) - stock_prices[, n_steps + 1] + strike_price * exp(-interest_rate * as.numeric(difftime(expiration_date, as.Date("1970-01-01"), units = "days"))/365)
+
+# Print the CALL and PUT prices
+cat("The price of the CALL option is", mean(ifelse(is.finite(call_prices), call_prices, 0)), "\n")
+cat("The price of the PUT option is", mean(ifelse(is.finite(put_prices), put_prices, 0)), "\n")
+```
+
+
+```
+
